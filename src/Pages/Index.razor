@@ -1,0 +1,118 @@
+﻿@page "/"
+@inherits BaseComponent
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex bd-highlight">
+                    <div class="p-2 flex-grow-1 bd-highlight"><h3>Chat API</h3></div>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Conversations.Count > 0)
+                        {
+                            foreach (var conversation in Conversations)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (conversation.IsUser)
+                                        {
+                                            <p class="text-end">@conversation.Content <span class="@conversation.IconClass" aria-hidden="true"></span></p>
+                                        }
+                                        else
+                                        {
+                                            <p><span class="@conversation.IconClass" aria-hidden="true"></span> @conversation.Content</p>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+
+                <div class="row g-3">
+                    <div class="col-auto">
+                        <input type="text" class="form-control" id="floatingInput" placeholder="Enter your message" @bind="UserMessage" @ref="ReferenceTextInput">
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary" type="button" @onclick="OnSendMessageAsync" disabled="@IsGenerating">
+                            @if (IsGenerating)
+                            {
+                                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                                <span>Replying...</span>
+                            }
+                            else
+                            {
+                                <span>Send</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IList<ChatConversation> Conversations = new List<ChatConversation>();
+
+    private string? UserMessage;
+    private ElementReference ReferenceTextInput = new();
+    private bool IsGenerating;
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+    private async Task OnSendMessageAsync()
+    {
+        if (UserMessage is null)
+        {
+            await ReferenceTextInput.FocusAsync();
+            return;
+        }
+
+        AddConversation(UserMessage);
+        StateHasChanged();
+
+        IsGenerating = true;
+
+        var chatResult = await API.Chat.CreateChatCompletionAsync(UserMessage);
+        var reply = chatResult.Choices[0].Message.Content.Trim();
+        IsGenerating = false;
+        UserMessage = string.Empty;
+        await ReferenceTextInput.FocusAsync();
+
+        AddConversation(reply, false);
+        StateHasChanged();
+    }
+
+    private void AddConversation(string content, bool isUser = true)
+    {
+        Conversations.Add(new ChatConversation
+            {
+                Content = content,
+                IsUser = isUser,
+                IconClass = isUser ? "oi oi-person" : "oi oi-terminal"
+            });
+    }
+
+
+    public class ChatConversation
+    {
+        public string Content { get; set; }
+
+        public string IconClass { get; set; }
+
+        public bool IsUser { get; set; }
+    }
+}

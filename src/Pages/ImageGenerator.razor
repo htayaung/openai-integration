@@ -1,0 +1,97 @@
+﻿@page "/imagegenerator"
+@inherits BaseComponent
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex bd-highlight">
+                    <div class="p-2 flex-grow-1 bd-highlight"><h3>Image Generator using OpenAI</h3></div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="floatingInput" placeholder="input" @bind="TextInput" @ref="ReferenceTextInput" @oninput="OnInput">
+                    <label for="floatingInput">Input</label>
+                </div>
+
+                <button class="btn btn-primary" type="button" @onclick="OnGenerateClick" disabled="@IsGenerating">
+                    @if (IsGenerating)
+                    {
+                        <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                        <span>Generating...</span>
+                    }
+                    else
+                    {
+                        <span>Generate</span>
+                    }
+                </button>
+
+                <button class="btn btn-primary" type="button" @onclick="OnResetClick">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex bd-highlight">
+                    <div class="p-2 flex-grow-1 bd-highlight"><h3>Result</h3></div>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (ImageSource is not null)
+                {
+                    <img src="@ImageSource" class="img-fluid" alt="@TextInput">
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private string? TextInput;
+    private ElementReference ReferenceTextInput = new();
+
+    private string? ImageSource;
+    private bool IsGenerating;
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        if (ReferenceTextInput.Context is not null)
+            await ReferenceTextInput.FocusAsync();
+    }
+
+    private async Task OnGenerateClick()
+    {
+        if (TextInput is null)
+        {
+            await ReferenceTextInput.FocusAsync();
+            return;
+        }
+
+        IsGenerating = true;
+
+        var imageResult = await API.ImageGenerations.CreateImageAsync(TextInput);
+        IsGenerating = false;
+        ImageSource = imageResult.Data[0].Url;
+    }
+
+    private async Task OnResetClick()
+    {
+        TextInput = string.Empty;
+        ImageSource = null;
+
+        await ReferenceTextInput.FocusAsync();
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        if (ImageSource is not null)
+            ImageSource = null;
+    }
+}
